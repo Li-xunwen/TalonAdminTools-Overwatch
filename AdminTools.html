@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>COS 纯前端直传（测试用）</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; }
+    input, button { margin: 10px 0; }
+    .progress { height: 20px; background: #eee; border-radius: 10px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h2>上传文件到 COS（公有桶）</h2>
+  <input type="file" id="fileInput" multiple />
+  <br />
+  <button onclick="uploadAll()">开始上传</button>
+
+  <div id="result"></div>
+
+  <script>
+    // === 配置区 ===
+    const BUCKET = 'talon-public-1258609989';
+    const REGION = 'ap-chongqing';
+    const BASE_URL = `https://${BUCKET}.cos.${REGION}.myqcloud.com`;
+
+    // === 工具函数 ===
+    function appendLog(message, className = '') {
+      const div = document.createElement('div');
+      div.className = className;
+      div.textContent = message;
+      document.getElementById('result').appendChild(div);
+    }
+
+    async function uploadFile(file) {
+      // 文件名编码（避免中文/空格问题）
+      const key = 'public/' + encodeURIComponent(file.name.replace(/\s+/g, '-'));
+      const url = `${BASE_URL}/${key}`;
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // 上传进度
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            appendLog(`⬆️ ${file.name}: ${percent}%`, 'progress-text');
+          }
+        };
+
+        // 成功
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const fileUrl = `${BASE_URL}/${encodeURIComponent(key)}`;
+            appendLog(`✅ ${file.name} 上传成功！\n${fileUrl}`, 'success');
+            resolve(fileUrl);
+          } else {
+            const error = `❌ ${file.name} 失败: ${xhr.status} ${xhr.statusText}`;
+            appendLog(error, 'error');
+            reject(new Error(error));
+          }
+        };
+
+        // 错误
+        xhr.onerror = () => {
+          const error = `❌ ${file.name} 网络错误`;
+          appendLog(error, 'error');
+          reject(new Error(error));
+        };
+
+        // 发送 PUT 请求（不设置 Content-Type，让浏览器自动处理）
+        xhr.open('PUT', url);
+        xhr.send(file);
+      });
+    }
+
+    async function uploadAll() {
+      const files = document.getElementById('fileInput').files;
+      if (files.length === 0) {
+        alert('请选择至少一个文件！');
+        return;
+      }
+
+      document.getElementById('result').innerHTML = '<h3>上传日志：</h3>';
+      appendLog(`📁 准备上传 ${files.length} 个文件...`);
+
+      const promises = Array.from(files).map(uploadFile);
+      try {
+        await Promise.all(promises);
+        appendLog('🎉 所有文件上传完成！', 'success');
+      } catch (err) {
+        console.error('上传出错:', err);
+      }
+    }
+  </script>
+</body>
+</html>

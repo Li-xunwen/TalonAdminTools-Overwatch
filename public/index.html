@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户配置管理</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f7fa;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button.secondary {
+      background: #6c757d;
+    }
+
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    /* 字段编辑器样式 */
+    .fields-container {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      background: #fff;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .field-item {
+      padding: 8px;
+      margin: 6px 0;
+      background: #f9f9f9;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .field-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .field-type-badge {
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: white;
+      background: #3498db;
+    }
+
+    .field-type-badge.string {
+      background: #2ecc71;
+    }
+
+    .field-type-badge.number {
+      background: #e67e22;
+    }
+
+    .field-type-badge.boolean {
+      background: #9b59b6;
+    }
+
+    .field-type-badge.array {
+      background: #e74c3c;
+    }
+
+    .field-type-badge.object {
+      background: #1abc9c;
+    }
+
+    .field-actions {
+      margin-left: auto;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .field-actions .delete-btn {
+      color: red;
+    }
+
+    .field-edit-form {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #ccc;
+      display: none;
+    }
+
+    .field-edit-form input,
+    .field-edit-form select,
+    .field-edit-form textarea {
+      width: 100%;
+      padding: 4px;
+      margin: 4px 0;
+      font-family: monospace;
+    }
+
+    .hero-list {
+      margin-top: 8px;
+    }
+
+    .hero-list button {
+      background: #2ecc71;
+      padding: 4px 8px;
+      margin: 2px;
+      font-size: 12px;
+    }
+
+    .sub-fields-container {
+      margin-top: 8px;
+      padding-left: 16px;
+      border-left: 2px solid #ddd;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* 用户卡片样式：带圆角背景底 */
+    .user-card {
+      background: white;
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      border: 1px solid #eaeaea;
+    }
+
+    .tab-buttons {
+      margin-bottom: 16px;
+    }
+
+    .tab-buttons button {
+      margin-right: 8px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .transaction-card {
+      background: #fff8e1;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+    }
+
+    .hash-match {
+      color: green;
+      font-weight: bold;
+    }
+
+    .hash-mismatch {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔐 用户配置管理</h1>
+
+    <!-- Tabs -->
+    <div class="tab-buttons">
+      <button onclick="switchTab('users')">👤 用户管理</button>
+      <button onclick="switchTab('transactions')">📬 待审核事务</button>
+    </div>
+
+    <!-- 用户管理 Tab -->
+    <div id="tab-users" class="tab-content active">
+      <div class="form-group">
+        <button type="button" onclick="createNewUser()" style="background:#2ecc71;">➕ 创建新用户</button>
+      </div>
+      <div id="userList" class="form-group">
+        <p>正在加载...</p>
+      </div>
+      <div id="userForm" class="hidden">
+        <!-- 原有表单内容 -->
+        <div class="form-group">
+          <label>当前编辑用户：<span id="editingUsernameDisplay"></span></label>
+        </div>
+        <div class="form-group">
+          <label>用户属性（支持嵌套对象与数组）：</label>
+          <div id="userFieldsContainer" class="fields-container"></div>
+          <button type="button" onclick="addUserField(null)" style="margin-top:10px;">➕ 添加根字段</button>
+        </div>
+        <div class="form-group">
+          <button type="button" onclick="togglePasswordSection()" style="background:#e67e22; font-size:14px;">
+            🔑 重设密码
+          </button>
+        </div>
+        <div id="passwordSection" class="form-group hidden">
+          <label for="passwordInput">新密码（留空则不修改）：</label>
+          <input type="password" id="passwordInput" placeholder="输入新密码" />
+        </div>
+        <button type="button" onclick="saveUser()">💾 保存配置</button>
+        <button type="button" onclick="cancelEdit()" style="background:#6c757d; margin-left:8px;">⬅️ 返回列表</button>
+      </div>
+    </div>
+
+    <!-- 事务审核 Tab -->
+    <div id="tab-transactions" class="tab-content">
+
+      <h2>📬 待审核事务</h2>
+      <div id="transactionList">
+        <p>正在加载...</p>
+      </div>
+      <div id="privateKeySection" class="form-group">
+        <label for="privateKeyInput">🔑 审核用私钥（PEM 格式）：</label>
+        <textarea id="privateKeyInput" rows="5" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea>
+        <div style="margin-top: 6px;">
+          <button type="button" onclick="savePrivateKeyToCookie()"
+            style="background:#17a2b8; font-size:12px; padding:4px 8px;">💾 保存到本地</button>
+          <button type="button" onclick="clearPrivateKeyCookie()"
+            style="background:#dc3545; font-size:12px; padding:4px 8px; margin-left:6px;">🗑️ 清除本地</button>
+        </div>
+      </div>
+      <div id="transactionDetail" class="hidden">
+        <h3>事务详情：<span id="txnUsername"></span></h3>
+
+        <!-- 哈希信息（全部用 textarea 自动换行） -->
+        <div class="form-group">
+          <label>签名文件哈希（来自.signature）：</label>
+          <textarea id="sigHash" readonly rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>实际 JSON 文件哈希：</label>
+          <textarea id="actualHash" readonly rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>哈希一致？</label>
+          <span id="hashMatchStatus"></span>
+        </div>
+
+        <div class="form-group">
+          <label>签名中的密码哈希（来自 .signature 的 P 字段）：</label>
+          <textarea id="claimedPwdHash" readonly rows="1"></textarea>
+        </div>
+        <div class="form-group">
+          <label>服务器存储的密码哈希（从 .pwd 文件解密）：</label>
+          <textarea id="storedPwdHash" readonly rows="1"></textarea>
+        </div>
+        <div class="form-group">
+          <label>密码哈希一致？</label>
+          <span id="pwdHashMatchStatus"></span>
+        </div>
+
+        <!-- 并排对比区域 -->
+        <div style="display: flex; gap: 16px; margin-top: 16px;">
+          <div style="flex: 1;">
+            <label>📄 完整 JSON 配置（来自.signature同名.json）：</label>
+            <pre id="txnJsonPreview"
+              style="background:#f8f9fa; padding:10px; border-radius:4px; overflow:auto; white-space: pre-wrap; word-break: break-all;"></pre>
+          </div>
+          <div style="flex: 1;">
+            <label>📜 .signature 原始内容（Base64 解码后）：</label>
+            <textarea id="signatureRawContent" readonly rows="10"
+              style="width:100%; font-family: monospace;"></textarea>
+          </div>
+        </div>
+
+        <button onclick="approveTransaction()" style="background:#28a745;">✅ 提交</button>
+        <button onclick="rejectTransaction()" style="background:#dc3545; margin-left:8px;">❌ 驳回</button>
+        <button onclick="hideTransactionDetail()" style="background:#6c757d; margin-left:8px;">⬅️ 返回列表</button>
+      </div>
+    </div>
+
+    <div id="statusMessage" class="status hidden"></div>
+  </div>
+
+  <script>
+    // ========== 全局状态 ==========
+    let currentUsername = '';
+    let isExistingUser = false;
+    let userFields = [];
+    const userFieldStates = {};
+    const allUsers = [];
+    let currentTxnUsername = '';
+    const PUBLIC_BUCKET = 'talon-public-1258609989';
+    const ADMIN_BUCKET = 'talon-admin-1258609989';
+    const REGION = 'ap-chongqing';
+
+    const HERO_LIST = [
+      "doomfist", "cassidy", "genji", "pharah", "reaper", "soldier-76", "sombra", "tracer",
+      "bastion", "hanzo", "junkrat", "mei", "torbjorn", "widowmaker", "ashe", "echo", "sojourn",
+      "ana", "baptiste", "brigitte", "lucio", "mercy", "moira", "zenyatta", "kiriko", "lifeweaver",
+      "sigma", "orisa", "ramattra", "reinhardt", "roadhog", "winston", "wrecking-ball", "zarya", "dva",
+      "junker-queen", "mauga", "hazard", "freja", "juno", "wuyang", "venture", "symmetra", "illari"
+    ];
+
+    const RSA_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+el7aSzozm1awUXssKoAzXvvI9O2SpZ/1I6qH8lm3+cRmuKflnKbwdIWC0njlhJLVuNWWhGFZE3H+sD1Ntmv4F1LARFVe17LcO6GzfmFLFnBYeGnlwsheIlz6tSqq5pfExMCwkWR5vcltfYi1s1mF+i+69M3YzNOEpzkkXsvWrXSmpncAeeQ4cVYAxpWQMLbG4ozwxWSo6xLsM9a5TNKAYKVOuJVbBBfNvmbd/7wGbIkV4yPKRslt7C0rskkC4qjr+AwYoo+DryivVhnMLnehGiUjcFn7FX4EvZmZb8OCLId8510gmQIDAQAB
+-----END PUBLIC KEY-----`;
+
+    // ========== 工具函数 ==========
+    function showStatus(msg, isError = false) {
+      const el = document.getElementById('statusMessage');
+      el.textContent = msg;
+      el.className = `status ${isError ? 'error' : 'success'}${!msg ? ' hidden' : ''}`;
+    }
+
+    function generateFieldId() {
+      return 'field-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+    }
+
+    // ========== 密码加密（保持不变）==========
+    async function sha256FullHex(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function sha256Truncated(password) {
+      const full = await sha256FullHex(password);
+      return full.substring(0, 16).toUpperCase();
+    }
+
+    async function importRsaPublicKey(pem) {
+      const pemContents = pem.replace(/-----BEGIN PUBLIC KEY-----/, '')
+        .replace(/-----END PUBLIC KEY-----/, '')
+        .replace(/\s/g, '');
+      const binaryDerString = atob(pemContents);
+      const binaryDer = new Uint8Array(binaryDerString.length);
+      for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+      }
+      return await crypto.subtle.importKey('spki', binaryDer.buffer, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['encrypt']);
+    }
+
+    async function rsaEncrypt(publicKey, plaintext) {
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(plaintext);
+      const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, encoded);
+      return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+    }
+
+    // ========== 字段管理（保持不变）==========
+    function renderUserFields(parentId = null, container = null) {
+      if (parentId === null) {
+        const rootContainer = document.getElementById('userFieldsContainer');
+        rootContainer.innerHTML = '';
+        userFields.forEach(field => {
+          const el = createFieldElement(field);
+          rootContainer.appendChild(el);
+        });
+      } else {
+        const subContainer = container || document.querySelector(`[data-field-id="${parentId}"] .sub-fields-container`);
+        if (!subContainer) return;
+        subContainer.innerHTML = '';
+        const parentField = findFieldById(parentId);
+        if (!parentField || !parentField.children) return;
+        parentField.children.forEach(child => {
+          const el = createFieldElement(child);
+          subContainer.appendChild(el);
+        });
+      }
+    }
+
+    function findFieldById(id, fields = userFields) {
+      for (const f of fields) {
+        if (f.id === id) return f;
+        if (f.children) {
+          const found = findFieldById(id, f.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function createFieldElement(field) {
+      const div = document.createElement('div');
+      div.className = 'field-item';
+      div.dataset.fieldId = field.id;
+
+      const isProtected = field.name === 'PWD16Byte' || field.name === 'hero' || field.name === 'ID';
+      const isHero = field.name === 'hero';
+      const isPwd = field.name === 'PWD16Byte';
+
+      const header = document.createElement('div');
+      header.className = 'field-header';
+
+      const badge = document.createElement('span');
+      badge.className = `field-type-badge ${field.type}`;
+      badge.textContent = field.type;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = field.name || '(unnamed)';
+      nameSpan.style.cursor = 'pointer';
+      nameSpan.style.flexGrow = '1';
+      nameSpan.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFieldEdit(field.id);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'field-actions';
+      if (!isProtected) {
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '×';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteUserField(field.id);
+        });
+        actions.appendChild(deleteBtn);
+      }
+
+      header.appendChild(badge);
+      header.appendChild(nameSpan);
+      header.appendChild(actions);
+
+      const form = document.createElement('div');
+      form.className = 'field-edit-form';
+      form.id = `${field.id}-form`;
+      form.style.display = userFieldStates[field.id] ? 'block' : 'none';
+
+      if (isPwd) {
+        form.innerHTML = `<div><strong>PWD16Byte 值:</strong> <code>${field.value || '未设置'}</code></div>`;
+      } else if (isHero) {
+        const heroList = Array.isArray(field.value) ? field.value : [];
+        let heroHtml = '<div class="hero-list">';
+        HERO_LIST.forEach(hero => {
+          const isChecked = heroList.includes(hero);
+          heroHtml += `
+            <button type="button"
+                    onclick="toggleHero('${field.id}', '${hero}')"
+                    style="
+                      background: ${isChecked ? '#1e8449' : '#2ecc71'};
+                      color: white;
+                      border: 2px solid ${isChecked ? '#145a32' : '#27ae60'};
+                      font-weight: bold;
+                      margin: 2px;
+                      padding: 4px 6px;
+                      font-size: 12px;
+                      border-radius: 3px;
+                    ">
+              ${hero}
+            </button>`;
+        });
+        heroHtml += '</div>';
+        form.innerHTML = heroHtml;
+      } else if (field.type === 'object' || field.type === 'array') {
+        form.innerHTML = `
+          <input type="text" placeholder="字段名" value="${field.name || ''}" onchange="updateFieldName('${field.id}', this.value)">
+          <select onchange="updateFieldType('${field.id}', this.value)">
+            <option value="string" ${field.type === 'string' ? 'selected' : ''}>String</option>
+            <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+            <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+            <option value="object" ${field.type === 'object' ? 'selected' : ''}>Object</option>
+            <option value="array" ${field.type === 'array' ? 'selected' : ''}>Array</option>
+          </select>
+          <button type="button" onclick="addUserField('${field.id}')" style="margin-top:6px; background:#3498db;">➕ 添加子字段</button>
+          <div class="sub-fields-container"></div>
+        `;
+        setTimeout(() => renderUserFields(field.id, form.querySelector('.sub-fields-container')), 0);
+      } else {
+        const valueStr = typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2);
+        form.innerHTML = `
+          <input type="text" placeholder="字段名" value="${field.name || ''}" onchange="updateFieldName('${field.id}', this.value)">
+          <select onchange="updateFieldType('${field.id}', this.value)">
+            <option value="string" ${field.type === 'string' ? 'selected' : ''}>String</option>
+            <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+            <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+            <option value="object" ${field.type === 'object' ? 'selected' : ''}>Object</option>
+            <option value="array" ${field.type === 'array' ? 'selected' : ''}>Array</option>
+          </select>
+          <textarea placeholder="值 (JSON格式)" rows="2" onchange="updateFieldValue('${field.id}', this.value)">${valueStr}</textarea>
+        `;
+      }
+
+      div.appendChild(header);
+      div.appendChild(form);
+      return div;
+    }
+
+    function toggleFieldEdit(fieldId) {
+      const wasExpanded = userFieldStates[fieldId];
+      userFieldStates[fieldId] = !wasExpanded;
+      const form = document.getElementById(`${fieldId}-form`);
+      if (form) form.style.display = userFieldStates[fieldId] ? 'block' : 'none';
+      if (!userFieldStates[fieldId]) collapseAllChildren(fieldId);
+    }
+
+    function collapseAllChildren(parentId) {
+      const descendants = getAllDescendantFieldIds(parentId);
+      descendants.forEach(id => {
+        userFieldStates[id] = false;
+        const form = document.getElementById(`${id}-form`);
+        if (form) form.style.display = 'none';
+      });
+    }
+
+    function getAllDescendantFieldIds(parentId) {
+      const descendants = [];
+      const parent = findFieldById(parentId);
+      if (!parent || !parent.children) return descendants;
+      function collect(fields) {
+        for (const f of fields) {
+          descendants.push(f.id);
+          if (f.children && f.children.length > 0) collect(f.children);
+        }
+      }
+      collect(parent.children);
+      return descendants;
+    }
+
+    function addUserField(parentId = null) {
+      const newId = generateFieldId();
+      const newField = { id: newId, name: '', type: 'string', value: '', children: [] };
+      if (parentId === null) {
+        userFields.push(newField);
+      } else {
+        const parent = findFieldById(parentId);
+        if (parent) {
+          if (!parent.children) parent.children = [];
+          parent.children.push(newField);
+        }
+      }
+      userFieldStates[newId] = true;
+      renderUserFields();
+    }
+
+    function deleteUserField(id) {
+      const deleteFrom = (fields) => {
+        for (let i = 0; i < fields.length; i++) {
+          if (fields[i].id === id) {
+            fields.splice(i, 1);
+            return true;
+          }
+          if (fields[i].children && deleteFrom(fields[i].children)) return true;
+        }
+        return false;
+      };
+      deleteFrom(userFields);
+      renderUserFields();
+    }
+
+    function updateFieldName(id, name) {
+      const field = findFieldById(id);
+      if (!field || field.name === 'PWD16Byte' || field.name === 'hero') return;
+      field.name = name;
+    }
+
+    function updateFieldType(id, type) {
+      const field = findFieldById(id);
+      if (!field || field.name === 'PWD16Byte' || field.name === 'hero') return;
+      field.type = type;
+      if (type === 'object') {
+        field.value = {};
+        field.children = field.children || [];
+      } else if (type === 'array') {
+        field.value = [];
+        field.children = field.children || [];
+      } else if (type === 'boolean') {
+        field.value = false;
+        field.children = [];
+      } else {
+        field.value = '';
+        field.children = [];
+      }
+      renderUserFields();
+    }
+
+    function updateFieldValue(id, valueStr) {
+      const field = findFieldById(id);
+      if (!field || field.name === 'PWD16Byte' || field.name === 'hero') return;
+      try {
+        field.value = JSON.parse(valueStr);
+      } catch (e) {
+        field.value = valueStr;
+      }
+    }
+
+    function toggleHero(fieldId, heroName) {
+      const field = findFieldById(fieldId);
+      if (!field || field.name !== 'hero') return;
+      if (!Array.isArray(field.value)) field.value = [];
+      const index = field.value.indexOf(heroName);
+      if (index === -1) field.value.push(heroName);
+      else field.value.splice(index, 1);
+      renderUserFields();
+    }
+
+    function loadFieldsFromJson(data, parentId = null) {
+      const fields = [];
+      for (const [key, value] of Object.entries(data)) {
+        const isArray = Array.isArray(value);
+        const isObj = !isArray && value !== null && typeof value === 'object';
+        const field = {
+          id: generateFieldId(),
+          name: key,
+          type: isArray ? 'array' : (isObj ? 'object' : typeof value),
+          value: value,
+          children: []
+        };
+        if (isObj || isArray) {
+          field.children = loadFieldsFromJson(value, field.id);
+        }
+        fields.push(field);
+      }
+      if (parentId === null) userFields = fields;
+      return fields;
+    }
+
+    function exportFieldsToJson(fields = userFields) {
+      const result = {};
+      for (const field of fields) {
+        if (!field.name) continue;
+        if (field.name === 'hero') {
+          result.hero = Array.isArray(field.value) ? field.value : [];
+          continue;
+        }
+        if (field.name === 'PWD16Byte') {
+          result.PWD16Byte = field.value;
+          continue;
+        }
+        if (field.type === 'object' || field.type === 'array') {
+          result[field.name] = exportFieldsToJson(field.children);
+        } else {
+          result[field.name] = field.value;
+        }
+      }
+      return result;
+    }
+
+    // ========== 用户管理 ==========
+    async function loadUserList() {
+      try {
+        const res = await fetch('/api/users/list');
+        if (!res.ok) throw new Error('无法获取用户列表');
+        const users = await res.json();
+        allUsers.length = 0;
+        allUsers.push(...users);
+        renderUserList();
+      } catch (err) {
+        showStatus('加载用户列表失败: ' + err.message, true);
+        document.getElementById('userList').innerHTML = '<p>❌ 加载失败</p>';
+      }
+    }
+
+    function renderUserList() {
+      const container = document.getElementById('userList');
+      if (allUsers.length === 0) {
+        container.innerHTML = '<p>暂无用户，点击上方“创建新用户”开始。</p>';
+        return;
+      }
+      let html = '';
+      for (const username of allUsers) {
+        html += `
+      <div class="field-item user-card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <strong>${username}</strong>
+        <div>
+          <button type="button" onclick="editUser('${username}')" style="margin-right:6px; background:#3498db;">✏️ 编辑</button>
+          <button type="button" onclick="deleteUser('${username}')" style="background:#e74c3c;">🗑️ 删除</button>
+        </div>
+      </div>
+    `;
+      }
+      container.innerHTML = html;
+    }
+
+    function createNewUser() {
+      const username = prompt('请输入新用户名：');
+      if (!username || !username.trim()) {
+        showStatus('用户名不能为空', true);
+        return;
+      }
+      const cleanName = username.trim();
+      if (allUsers.includes(cleanName)) {
+        showStatus('用户已存在', true);
+        return;
+      }
+      enterEditUser(cleanName, false);
+    }
+
+    async function editUser(username) {
+      enterEditUser(username, true);
+    }
+
+    async function enterEditUser(username, isExisting) {
+      currentUsername = username;
+      isExistingUser = isExisting;
+
+      try {
+        if (isExisting) {
+          const res = await fetch(`/api/user/${encodeURIComponent(username)}`);
+          if (!res.ok) throw new Error('用户数据加载失败');
+          const userData = await res.json();
+          loadFieldsFromJson(userData);
+        } else {
+          userFields = [
+            { id: generateFieldId(), name: 'ID', type: 'string', value: username, children: [] },
+            { id: generateFieldId(), name: 'hero', type: 'array', value: [], children: [] },
+            { id: generateFieldId(), name: 'PWD16Byte', type: 'string', value: '', children: [] }
+          ];
+        }
+
+        // 👇 关键：初始化时隐藏密码区域
+        document.getElementById('passwordSection').classList.add('hidden');
+        document.getElementById('passwordInput').value = '';
+
+        document.getElementById('editingUsernameDisplay').textContent = username;
+        document.getElementById('userForm').classList.remove('hidden');
+        document.getElementById('userList').classList.add('hidden');
+        renderUserFields();
+        showStatus('');
+      } catch (err) {
+        showStatus('加载用户失败: ' + err.message, true);
+      }
+    }
+
+    function cancelEdit() {
+      document.getElementById('userForm').classList.add('hidden');
+      document.getElementById('userList').classList.remove('hidden');
+    }
+
+    async function saveUser() {
+      const password = document.getElementById('passwordInput').value;
+      const shouldUpdatePassword = !isExistingUser ? !!password : password !== '';
+
+      if (!isExistingUser && !password) {
+        return showStatus('新用户必须设置密码', true);
+      }
+
+      let encryptedPwdBase64 = null;
+      const userData = exportFieldsToJson();
+
+      if (shouldUpdatePassword) {
+        try {
+          showStatus('正在加密密码...');
+          userData.PWD16Byte = await sha256Truncated(password);
+          const passwordHashHex = await sha256FullHex(password);
+          const publicKey = await importRsaPublicKey(RSA_PUBLIC_KEY_PEM);
+          encryptedPwdBase64 = await rsaEncrypt(publicKey, passwordHashHex);
+        } catch (err) {
+          console.error('密码处理失败:', err);
+          return showStatus('密码加密失败，请检查公钥', true);
+        }
+      }
+
+      try {
+        const payload = {
+          username: currentUsername,
+          data: userData,
+          isNew: !isExistingUser,
+          encryptedPassword: encryptedPwdBase64,
+          updatePassword: shouldUpdatePassword
+        };
+
+        const res = await fetch('/api/user/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          showStatus('✅ 保存成功！');
+          isExistingUser = true;
+          if (shouldUpdatePassword) {
+            document.getElementById('passwordInput').value = '';
+          }
+          // 返回列表并刷新
+          setTimeout(() => {
+            document.getElementById('userForm').classList.add('hidden');
+            document.getElementById('userList').classList.remove('hidden');
+            loadUserList();
+          }, 1000);
+        } else {
+          const err = await res.json();
+          showStatus('❌ 保存失败: ' + (err.error || '未知错误'), true);
+        }
+      } catch (err) {
+        showStatus('网络错误: ' + err.message, true);
+      }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`确定要删除用户 "${username}" 吗？此操作会将其移入回收站。`)) return;
+
+      try {
+        const res = await fetch('/api/user/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+        });
+
+        if (res.ok) {
+          showStatus(`✅ 用户 "${username}" 已移至回收站`);
+          loadUserList();
+        } else {
+          const err = await res.json();
+          showStatus('❌ 删除失败: ' + (err.error || '未知错误'), true);
+        }
+      } catch (err) {
+        showStatus('网络错误: ' + err.message, true);
+      }
+    }
+
+    function togglePasswordSection() {
+      const section = document.getElementById('passwordSection');
+      const isHidden = section.classList.contains('hidden');
+      if (isHidden) {
+        section.classList.remove('hidden');
+        // 可选：聚焦到输入框
+        document.getElementById('passwordInput').focus();
+      } else {
+        section.classList.add('hidden');
+        // 清空输入（避免误保存）
+        document.getElementById('passwordInput').value = '';
+      }
+    }
+
+
+    // ========== 事务管理 ==========
+
+    let currentTxnFolder = '';
+    let currentTxnFilename = '';
+
+    async function loadTransactionList() {
+      try {
+        const res = await fetch('/api/transactions/list');
+        if (!res.ok) throw new Error('无法获取事务列表');
+        const signaturePaths = await res.json();
+        renderTransactionList(signaturePaths);
+      } catch (err) {
+        showStatus('加载事务失败: ' + err.message, true);
+        document.getElementById('transactionList').innerHTML = '<p>❌ 加载失败</p>';
+      }
+    }
+
+    async function renderTransactionList(signaturePaths) {
+      const container = document.getElementById('transactionList');
+      if (signaturePaths.length === 0) {
+        container.innerHTML = '<p>暂无待审核事务。</p>';
+        return;
+      }
+
+      // 尝试获取私钥（优先页面输入，其次 Cookie）
+      let privateKeyPem = document.getElementById('privateKeyInput').value.trim();
+      if (!privateKeyPem) {
+        loadPrivateKeyFromCookie(); // 自动填充到输入框
+        privateKeyPem = document.getElementById('privateKeyInput').value.trim();
+      }
+
+      // 开始构建列表项（带异步解析）
+      container.innerHTML = '<p>正在解析事务身份信息...</p>';
+
+      const items = [];
+      for (const sigPath of signaturePaths) {
+        const lastSlash = sigPath.lastIndexOf('/');
+        const folder = lastSlash > -1 ? sigPath.substring(0, lastSlash) : '';
+        const filename = lastSlash > -1 ? sigPath.substring(lastSlash + 1) : sigPath;
+
+        let displayId = folder || '未知用户';
+        let timestampStr = '';
+
+        if (privateKeyPem) {
+          try {
+            // 获取 .signature 原始内容（Base64）
+            const rawUrl = `/api/transaction/${encodeURIComponent(folder)}/${encodeURIComponent(filename)}/raw`;
+            const res = await fetch(rawUrl);
+            if (res.ok) {
+              const data = await res.json(); // { signature: "base64...", jsonData: "..." }
+              const decryptedBytes = await rsaDecryptFromPem(privateKeyPem, data.signature);
+              const decryptedText = new TextDecoder().decode(decryptedBytes);
+              const payload = JSON.parse(decryptedText);
+
+              if (payload && typeof payload === 'object') {
+                displayId = payload.ID || folder || '未提供ID';
+                if (payload.T) {
+                  const time = new Date(parseInt(payload.T));
+                  if (!isNaN(time.getTime())) {
+                    timestampStr = ` | ${time.toLocaleString('zh-CN')}`;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('解析事务 ID 失败:', sigPath, e);
+            displayId = `${folder}（ID解析失败）`;
+          }
+        } else {
+          displayId = `${folder}（需私钥解析ID）`;
+        }
+
+        items.push({ folder, filename, displayId, timestampStr });
+      }
+
+      // 渲染最终列表
+      let html = '';
+      for (const item of items) {
+        html += `
+      <div class="transaction-card">
+        <strong>${item.displayId}</strong>
+        <small style="display:block;color:#666;margin-top:4px;">
+          ${item.folder}/${item.filename}${item.timestampStr}
+        </small>
+        <button type="button" 
+                onclick="viewTransaction('${encodeURIComponent(item.folder)}','${encodeURIComponent(item.filename)}')" 
+                style="float:right; background:#ffc107; color:black;">🔍 查看</button>
+      </div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    // 全局缓存私钥（仅内存中，刷新即丢）
+    let tempPrivateKey = '';
+
+    async function viewTransaction(folder, filename) {
+      currentTxnFolder = decodeURIComponent(folder);
+      currentTxnFilename = decodeURIComponent(filename);
+
+      const jsonFilename = currentTxnFilename.replace(/\.signature$/i, '.json');
+      if (jsonFilename === currentTxnFilename) {
+        alert('事务文件必须以 .signature 结尾');
+        return;
+      }
+
+      document.getElementById('privateKeySection').style.display = 'none';
+      const pagePrivateKey = document.getElementById('privateKeyInput').value.trim();
+      if (pagePrivateKey) tempPrivateKey = pagePrivateKey;
+      if (!tempPrivateKey) {
+        alert('请先粘贴 RSA 私钥');
+        document.getElementById('privateKeyInput').focus();
+        return;
+      }
+
+      try {
+        // Step 1: 获取 .signature 内容（Base64）
+        const rawUrl = `/api/transaction/${encodeURIComponent(currentTxnFolder)}/${encodeURIComponent(currentTxnFilename)}/raw`;
+        const sigRes = await fetch(rawUrl);
+        if (!sigRes.ok) throw new Error('加载签名失败');
+        const { signature: signatureBase64, sigKey } = await sigRes.json();
+
+        // Step 2: 构造 .json 的公开 COS URL 并直接 fetch
+        const jsonUrl = `https://${PUBLIC_BUCKET}.cos.${REGION}.myqcloud.com/${encodeURIComponent(currentTxnFolder)}/${encodeURIComponent(jsonFilename)}`;
+        let jsonDataStr = '{}';
+        try {
+          const jsonRes = await fetch(jsonUrl);
+          if (jsonRes.ok) {
+            jsonDataStr = await jsonRes.text();
+          } else if (jsonRes.status !== 404) {
+            throw new Error(`获取 JSON 失败: ${jsonRes.status}`);
+          }
+          // 如果 404，保留 '{}'（与原逻辑一致）
+        } catch (e) {
+          console.warn('获取 .json 文件失败:', e);
+          // 不中断流程，继续解析签名
+        }
+
+        // Step 3: 计算实际 JSON 哈希
+        const encoder = new TextEncoder();
+        const jsonBytes = encoder.encode(jsonDataStr);
+        const actualHashBuffer = await crypto.subtle.digest('SHA-256', jsonBytes);
+        const fullActualHashHex = Array.from(new Uint8Array(actualHashBuffer))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+        const actualHashHex = fullActualHashHex.substring(0, 32);
+
+        // Step 4: 解密 signature
+        let decryptedText = '';
+        let sigHashHex = '';
+        let claimedPwdHash = '';
+        let timestampMs = null;
+        let userIdFromSig = null;
+        let isValidSig = false;
+
+        try {
+          const decrypted = await rsaDecryptFromPem(tempPrivateKey, signatureBase64);
+          decryptedText = new TextDecoder().decode(decrypted);
+          const payload = JSON.parse(decryptedText);
+          if (payload && typeof payload === 'object') {
+            sigHashHex = (payload.F || '').toLowerCase();
+            claimedPwdHash = (payload.P || '').toLowerCase();
+            timestampMs = payload.T;
+            userIdFromSig = payload.ID;
+            isValidSig = /^[a-f0-9]{32}$/.test(sigHashHex) && sigHashHex === actualHashHex;
+          } else {
+            sigHashHex = '(无效格式)';
+          }
+        } catch (e) {
+          console.error('解密失败:', e);
+          decryptedText = `❌ 解密失败: ${e.message}`;
+          sigHashHex = '(解密失败)';
+        }
+
+        // Step 5: 获取 .pwd 文件（仍需通过 ID 构造 COS URL）
+        let storedFullHash = '';
+        let pwdFileValid = false;
+        if (userIdFromSig) {
+          try {
+            const pwdUrl = `https://${ADMIN_BUCKET}.cos.${REGION}.myqcloud.com/${encodeURIComponent(userIdFromSig)}/${encodeURIComponent(userIdFromSig)}.pwd`;
+            const pwdRes = await fetch(pwdUrl);
+            if (pwdRes.ok) {
+              const pwdBase64 = await pwdRes.text();
+              const pwdDecryptedBytes = await rsaDecryptFromPem(tempPrivateKey, pwdBase64.trim());
+              storedFullHash = new TextDecoder().decode(pwdDecryptedBytes).toLowerCase();
+              pwdFileValid = /^[a-f0-9]{64}$/.test(storedFullHash);
+            } else {
+              storedFullHash = `(未找到 .pwd 文件，ID: ${userIdFromSig})`;
+            }
+          } catch (e) {
+            storedFullHash = `(解密 .pwd 失败: ${e.message})`;
+          }
+        } else {
+          storedFullHash = '(签名中未提供 ID，无法加载 .pwd)';
+        }
+
+        const pwdHashMatch = pwdFileValid && claimedPwdHash === storedFullHash;
+
+        // Step 6: 更新 UI
+        const displayId = userIdFromSig || currentTxnFolder || '未知用户';
+        let titleText = `${displayId} (${currentTxnFilename})`;
+        if (timestampMs) {
+          const timeStr = new Date(parseInt(timestampMs)).toLocaleString('zh-CN');
+          titleText += ` | ${timeStr}`;
+        }
+        document.getElementById('txnUsername').textContent = titleText;
+
+        document.getElementById('sigHash').value = sigHashHex;
+        document.getElementById('actualHash').value = actualHashHex;
+        document.getElementById('claimedPwdHash').value = claimedPwdHash || '(无 P 字段)';
+        document.getElementById('storedPwdHash').value = storedFullHash;
+
+        const matchEl = document.getElementById('hashMatchStatus');
+        matchEl.className = isValidSig ? 'hash-match' : 'hash-mismatch';
+        matchEl.textContent = isValidSig ? '✅ 一致' : '❌ 不一致';
+
+        const pwdMatchEl = document.getElementById('pwdHashMatchStatus');
+        pwdMatchEl.className = pwdHashMatch ? 'hash-match' : 'hash-mismatch';
+        pwdMatchEl.textContent = pwdHashMatch ? '✅ 一致' : '❌ 不一致';
+
+        document.getElementById('signatureRawContent').value = decryptedText;
+
+        let formattedJson = jsonDataStr;
+        try {
+          formattedJson = JSON.stringify(JSON.parse(jsonDataStr), null, 2);
+        } catch (e) {
+          // 保留原始字符串
+        }
+        document.getElementById('txnJsonPreview').textContent = formattedJson;
+        document.getElementById('privateKeyInput').value = tempPrivateKey;
+
+        document.getElementById('transactionDetail').classList.remove('hidden');
+        document.getElementById('transactionList').classList.add('hidden');
+      } catch (err) {
+        showStatus('查看事务失败: ' + err.message, true);
+      }
+    }
+
+    // ====== RSA 私钥解密（PKCS#8 PEM -> CryptoKey -> decrypt）======
+    async function importRsaPrivateKey(pem) {
+      // 去除 PEM 头尾和空格
+      const pemContents = pem
+        .replace(/-----BEGIN PRIVATE KEY-----/, '')
+        .replace(/-----END PRIVATE KEY-----/, '')
+        .replace(/\s/g, '');
+
+      // Base64 解码为二进制
+      const binaryDerString = atob(pemContents);
+      const binaryDer = new Uint8Array(binaryDerString.length);
+      for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+      }
+
+      // 导入私钥（必须指定 extractable: true 和 decrypt 权限）
+      return await crypto.subtle.importKey(
+        'pkcs8',
+        binaryDer.buffer,
+        {
+          name: 'RSA-OAEP',
+          hash: 'SHA-256'
+        },
+        true,
+        ['decrypt']
+      );
+    }
+
+    async function rsaDecryptFromPem(privateKeyPem, base64Ciphertext) {
+      const privateKey = await importRsaPrivateKey(privateKeyPem);
+      const ciphertext = Uint8Array.from(atob(base64Ciphertext), c => c.charCodeAt(0));
+      const plaintext = await crypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        privateKey,
+        ciphertext
+      );
+      return new Uint8Array(plaintext);
+    }
+
+    function highlightJsonFields(jsonStr, modifiedKeys = []) {
+      try {
+        const obj = JSON.parse(jsonStr);
+        const seen = new Set();
+
+        function walk(current, path = '') {
+          if (current === null || typeof current !== 'object') return JSON.stringify(current);
+
+          if (Array.isArray(current)) {
+            return '[' + current.map((item, i) => walk(item, `${path}[${i}]`)).join(', ') + ']';
+          }
+
+          const entries = Object.entries(current).map(([key, val]) => {
+            const fullPath = path ? `${path}.${key}` : key;
+            const isModified = modifiedKeys.some(k => fullPath === k || fullPath.startsWith(k + '.'));
+            const valStr = walk(val, fullPath);
+            const quotedKey = `"${key}"`;
+            const pair = `${quotedKey}: ${valStr}`;
+            if (isModified && !seen.has(fullPath)) {
+              seen.add(fullPath);
+              return `<span style="background:yellow">${pair}</span>`;
+            }
+            return pair;
+          });
+          return '{' + entries.join(', ') + '}';
+        }
+
+        return walk(obj);
+      } catch (e) {
+        return jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      }
+    }
+
+
+    async function approveTransaction() {
+      if (!confirm(`确定要提交 "${currentTxnFolder}/${currentTxnFilename}" 吗？`)) return;
+      try {
+        const url = `/api/transaction/${encodeURIComponent(currentTxnFolder)}/${encodeURIComponent(currentTxnFilename)}/commit`;
+        const res = await fetch(url, { method: 'POST' });
+        if (res.ok) {
+          showStatus('✅ 提交成功！');
+          hideTransactionDetail();
+          loadTransactionList();
+          loadUserList();
+        } else {
+          const err = await res.json();
+          showStatus('提交失败: ' + (err.error || '未知错误'), true);
+        }
+      } catch (err) {
+        showStatus('网络错误: ' + err.message, true);
+      }
+    }
+
+    async function rejectTransaction() {
+      if (!confirm(`确定要驳回 "${currentTxnFolder}/${currentTxnFilename}" 吗？`)) return;
+      try {
+        const url = `/api/transaction/${encodeURIComponent(currentTxnFolder)}/${encodeURIComponent(currentTxnFilename)}/reject`;
+        const res = await fetch(url, { method: 'POST' });
+        if (res.ok) {
+          showStatus('✅ 已驳回并归档');
+          hideTransactionDetail();
+          loadTransactionList();
+        } else {
+          const err = await res.json();
+          showStatus('驳回失败: ' + err.error, true);
+        }
+      } catch (err) {
+        showStatus('网络错误: ' + err.message, true);
+      }
+    }
+
+    function hideTransactionDetail() {
+      document.getElementById('transactionDetail').classList.add('hidden');
+      document.getElementById('transactionList').classList.remove('hidden');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'transactions') {
+        loadTransactionList();
+      } else if (tab === 'users') {
+        loadUserList();
+      }
+    }
+
+    // 保存私钥到 Cookie（有效期 7 天）
+    function savePrivateKeyToCookie() {
+      const key = document.getElementById('privateKeyInput').value.trim();
+      if (!key) {
+        showStatus('私钥为空，无法保存', true);
+        return;
+      }
+      // 转义换行符和特殊字符，避免 Cookie 解析错误
+      const encoded = encodeURIComponent(key.replace(/\r\n/g, '\n')); // 统一为 \n
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString(); // 7天
+      document.cookie = `adminPrivateKey=${encoded}; expires=${expires}; path=/; SameSite=Strict`;
+      showStatus('✅ 私钥已保存到本地（仅本设备）');
+    }
+
+    // 从 Cookie 读取私钥并填充
+    function loadPrivateKeyFromCookie() {
+      const name = 'adminPrivateKey=';
+      const decodedCookie = decodeURIComponent(document.cookie);
+      const ca = decodedCookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(name) === 0) {
+          const value = c.substring(name.length);
+          // 还原换行符
+          const restored = value.replace(/\n/g, '\r\n');
+          document.getElementById('privateKeyInput').value = restored;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // 清除 Cookie
+    function clearPrivateKeyCookie() {
+      document.cookie = 'adminPrivateKey=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+      document.getElementById('privateKeyInput').value = '';
+      showStatus('🗑️ 本地私钥已清除');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUserList();
+      // 👇 新增：自动加载私钥
+      loadPrivateKeyFromCookie();
+    });
+
+    // ========== 初始化 ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUserList();
+    });
+
+  </script>
+</body>
+
+</html>
