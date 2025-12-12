@@ -742,17 +742,16 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
       let html = '';
       for (const username of allUsers) {
         html += `
-
 <div class="user-card">
   <div style="flex: 1; min-width: 0;">
     <strong>${username}</strong>
   </div>
   <div class="action-buttons">
-    <button onclick="editUser('alice')">✏️ 编辑</button>
-    <button onclick="deleteUser('alice')" style="background:#dc3545;">🗑️ 删除</button>
+    <button onclick="editUser('${username.replace(/'/g, "\\'")}')">✏️ 编辑</button>
+    <button onclick="deleteUser('${username.replace(/'/g, "\\'")}')" style="background:#dc3545;">🗑️ 删除</button>
   </div>
 </div>
-    `;
+`;
       }
       container.innerHTML = html;
     }
