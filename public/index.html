@@ -179,6 +179,24 @@
       border: 1px solid #eaeaea;
     }
 
+    /* 统一操作按钮容器 */
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+      /* 推到最右边 */
+      flex-shrink: 0;
+    }
+
+    /* 卡片内部使用 flex 布局 */
+    .user-card,
+    .transaction-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
     .tab-buttons {
       margin-bottom: 16px;
     }
@@ -709,13 +727,16 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
       let html = '';
       for (const username of allUsers) {
         html += `
-      <div class="field-item user-card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <strong>${username}</strong>
-        <div>
-          <button type="button" onclick="editUser('${username}')" style="margin-right:6px; background:#3498db;">✏️ 编辑</button>
-          <button type="button" onclick="deleteUser('${username}')" style="background:#e74c3c;">🗑️ 删除</button>
-        </div>
-      </div>
+
+<div class="user-card">
+  <div style="flex: 1; min-width: 0;">
+    <strong>${username}</strong>
+  </div>
+  <div class="action-buttons">
+    <button onclick="editUser('alice')">✏️ 编辑</button>
+    <button onclick="deleteUser('alice')" style="background:#dc3545;">🗑️ 删除</button>
+  </div>
+</div>
     `;
       }
       container.innerHTML = html;
