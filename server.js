@@ -160,7 +160,7 @@ app.post('/api/transaction/:folder/:filename/commit', async (req, res) => {
   if (!filename.endsWith('.signature')) {
     return res.status(400).json({ error: '无效的签名文件名' });
   }
-  const baseName = filename.slice(0, -11);
+  const baseName = filename.slice(0, -10);
   const jsonKey = `${folder}/${baseName}.json`;
   const sigKey = `${folder}/${filename}`;
 
