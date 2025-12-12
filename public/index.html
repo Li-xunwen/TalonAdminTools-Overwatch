@@ -219,6 +219,21 @@
       padding: 12px;
       margin-bottom: 12px;
       border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      /* 防止按钮被拉高 */
+      gap: 12px;
+      flex-wrap: wrap;
+      /* 允许小屏下换行，但按钮仍靠右 */
+      position: relative;
+    }
+
+    .transaction-card button {
+      flex-shrink: 0;
+      /* 防止按钮被压缩 */
+      align-self: flex-start;
+      /* 保持顶部对齐 */
     }
 
     .hash-match {
@@ -935,7 +950,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
         const filename = lastSlash > -1 ? sigPath.substring(lastSlash + 1) : sigPath;
 
         let displayId = folder || '未知用户';
-        let timestampStr = '';
+        let timestampMs = null; // 👈 保存原始时间戳用于排序
 
         if (privateKeyPem) {
           try {
@@ -951,10 +966,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
               if (payload && typeof payload === 'object') {
                 displayId = payload.ID || folder || '未提供ID';
                 if (payload.T) {
-                  const time = new Date(parseInt(payload.T));
-                  if (!isNaN(time.getTime())) {
-                    timestampStr = ` | ${time.toLocaleString('zh-CN')}`;
-                  }
+                  timestampMs = parseInt(payload.T); // 👈 保留数字时间戳
                 }
               }
             }
@@ -966,22 +978,41 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
           displayId = `${folder}（需私钥解析ID）`;
         }
 
-        items.push({ folder, filename, displayId, timestampStr });
+        // 构造时间显示字符串（用于 UI）
+        let timestampStr = '';
+        if (timestampMs && !isNaN(timestampMs)) {
+          const time = new Date(timestampMs);
+          if (!isNaN(time.getTime())) {
+            timestampStr = ` | ${time.toLocaleString('zh-CN')}`;
+          }
+        }
+
+        items.push({ folder, filename, displayId, timestampMs, timestampStr });
       }
+
+      // ✅ 按时间戳降序排序：最新在上
+      items.sort((a, b) => {
+        // 如果没有时间戳，视为最旧（排到最后）
+        const timeA = a.timestampMs || 0;
+        const timeB = b.timestampMs || 0;
+        return timeB - timeA; // 降序
+      });
 
       // 渲染最终列表
       let html = '';
       for (const item of items) {
         html += `
-      <div class="transaction-card">
-        <strong>${item.displayId}</strong>
-        <small style="display:block;color:#666;margin-top:4px;">
-          ${item.folder}/${item.filename}${item.timestampStr}
-        </small>
-        <button type="button" 
-                onclick="viewTransaction('${encodeURIComponent(item.folder)}','${encodeURIComponent(item.filename)}')" 
-                style="float:right; background:#ffc107; color:black;">🔍 查看</button>
-      </div>`;
+<div class="transaction-card">
+  <div style="min-width: 0;">
+    <strong>${item.displayId}</strong>
+    <small style="display:block;color:#666;margin-top:4px;">
+      ${item.folder}/${item.filename}${item.timestampStr}
+    </small>
+  </div>
+  <button type="button" 
+          onclick="viewTransaction('${encodeURIComponent(item.folder)}','${encodeURIComponent(item.filename)}')" 
+          style="background:#ffc107; color:black; white-space: nowrap;">🔍 查看</button>
+</div>`;
       }
       container.innerHTML = html;
     }
@@ -1298,9 +1329,36 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
       showStatus('🗑️ 本地私钥已清除');
     }
 
+    // 清理除 Cookie 外的浏览器存储缓存（不影响 Cookie）
+    function clearNonCookieCache() {
+      // 清除 localStorage
+      if (typeof Storage !== 'undefined') {
+        localStorage.clear();
+      }
+
+      // 清除 sessionStorage
+      if (typeof Storage !== 'undefined') {
+        sessionStorage.clear();
+      }
+
+      // 可选：清除 Cache API 缓存（Service Worker 控制的缓存）
+      if ('caches' in window) {
+        caches.keys().then(function (cacheNames) {
+          cacheNames.forEach(function (cacheName) {
+            caches.delete(cacheName);
+          });
+        }).catch(function (err) {
+          console.warn('无法清除 Cache Storage:', err);
+        });
+      }
+
+      // 注意：IndexedDB 通常用于复杂数据，若无特殊用途可不清理；
+      // 若需清理，请单独处理特定数据库。
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      clearNonCookieCache();
       loadUserList();
-      // 👇 新增：自动加载私钥
       loadPrivateKeyFromCookie();
     });
 
