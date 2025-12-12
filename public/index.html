@@ -1000,14 +1000,18 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoywmxv9e4Td4yp9g4blKpfQvjBXc+Hp7/I+
         try {
           const jsonRes = await fetch(jsonUrl);
           if (jsonRes.ok) {
-            jsonDataStr = await jsonRes.text();
-          } else if (jsonRes.status !== 404) {
-            throw new Error(`获取 JSON 失败: ${jsonRes.status}`);
+            const rawText = await jsonRes.text();
+            // 尝试标准化为 profile.html 的格式
+            try {
+              const obj = JSON.parse(rawText);
+              jsonDataStr = JSON.stringify(obj, null, 2);
+            } catch (parseErr) {
+              // 如果不是合法 JSON，保留原始文本（如空文件）
+              jsonDataStr = rawText;
+            }
           }
-          // 如果 404，保留 '{}'（与原逻辑一致）
         } catch (e) {
           console.warn('获取 .json 文件失败:', e);
-          // 不中断流程，继续解析签名
         }
 
         // Step 3: 计算实际 JSON 哈希
